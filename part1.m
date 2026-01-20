@@ -7,7 +7,25 @@ function part1(varargin)
         displayEndEffectorPositions(varargin{i}, materialName, showFigs);
         [ft_peaks, ft_troughs] = obtainForceTorquePeaks(varargin{i});
         displayForceTorque(varargin{i}, ft_peaks, ft_troughs, materialName, showFigs);
+        display3DForceDataMiddlePapillae(varargin{i}, materialName, showFigs);
     end
+end
+
+function display3DForceDataMiddlePapillae(data, material, showFigs)
+    if ~showFigs
+        return;  % Exit function early if not showing figures
+    end
+    forceData = data.sensor_matrices_force;
+
+    figure
+    Utilities.plotByMaterial(forceData(:,10), forceData(:,11), forceData(:,12), material)
+    grid on
+    axis equal
+
+    xlabel('X')
+    ylabel('Y')
+    zlabel('Z')
+    title('Force Data of Middle Papillae')
 end
 
 function displayEndEffectorPositions(data, material, showFigs)

@@ -28,5 +28,6 @@ part1(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
     hexagon_normal, hexagon_rubber, hexagon_TPU, showFigs)
 
 % Part 2
-part2()
+part2(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
+    oblong_normal, oblong_rubber, oblong_TPU, showFigs)
 
