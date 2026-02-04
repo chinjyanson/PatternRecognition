@@ -1,0 +1,226 @@
+function part3(varargin)
+	% part3  t-SNE on middle sensor force data.
+	% Usage: part3(cyl_normal, cyl_rubber, cyl_tpu, hex_normal, hex_rubber,
+	%             hex_tpu, oblong_normal, oblong_rubber, oblong_tpu, showFigs)
+
+	if nargin == 0
+		error('part3 expects data structures as input.');
+	end
+
+	if islogical(varargin{end})
+		showFigs = varargin{end};
+		dataArgs = varargin(1:end-1);
+	else
+		showFigs = true;
+		dataArgs = varargin;
+	end
+
+	if exist('tsne', 'file') ~= 2
+		error('t-SNE requires the Statistics and Machine Learning Toolbox (tsne function not found).');
+	end
+
+	% Split inputs into groups by name
+	cylinders = {};
+	hexagons = {};
+	oblongs = {};
+	for i = 1:numel(dataArgs)
+		d = dataArgs{i};
+		if ~isfield(d, 'name')
+			error('Each input must have a .name field indicating material.');
+		end
+		n = lower(string(d.name));
+		if contains(n, 'cylinder')
+			cylinders{end+1} = d; %#ok<AGROW>
+		elseif contains(n, 'hexagon')
+			hexagons{end+1} = d; %#ok<AGROW>
+		elseif contains(n, 'oblong')
+			oblongs{end+1} = d; %#ok<AGROW>
+		end
+	end
+
+	perplexities = [5, 30];
+
+	cylSummary = runTSNEGroup(cylinders, 'Cylinder', perplexities, showFigs);
+	% Repeat for either hexagon or oblong (choose oblong here)
+	obSummary = runTSNEGroup(oblongs, 'Oblong', perplexities, showFigs);
+
+	commentOnOutcomesTSNE(cylSummary, obSummary);
+	commentOnTSNEvsPCA(cylinders, oblongs);
+end
+
+function summary = runTSNEGroup(dataList, groupLabel, perplexities, showFigs)
+	summary = struct();
+	if isempty(dataList)
+		return;
+	end
+
+	[X, materials] = collectForceData(dataList);
+	if size(X,1) < 10
+		warning('%s: not enough samples for t-SNE.', groupLabel);
+		return;
+	end
+
+	[Xz] = standardizeFeatures(X);
+	perps = validatePerplexities(perplexities, size(Xz,1));
+
+	losses = zeros(numel(perps), 1);
+	meanDist = zeros(numel(perps), 1);
+
+	for p = 1:numel(perps)
+		rng(0);
+		try
+			[Y, loss] = tsne(Xz, 'NumDimensions', 2, 'Perplexity', perps(p), ...
+				'NumPCAComponents', min(50, size(Xz,2)), 'Verbose', 0);
+			losses(p) = loss;
+			meanDist(p) = meanCentroidDistance(Y, materials);
+		catch ME
+			warning('t-SNE failed for perplexity %d: %s', perps(p), ME.message);
+			Y = zeros(size(Xz,1), 2);
+			losses(p) = NaN;
+			meanDist(p) = NaN;
+		end
+
+		if showFigs
+			figure('Name', groupLabel + " | t-SNE (perplexity=" + perps(p) + ")");
+			hold on
+			plotMaterialScatter2D(Y(:,1), Y(:,2), materials);
+			hold off
+			grid on; axis equal
+			xlabel('t-SNE 1'); ylabel('t-SNE 2');
+			title(groupLabel + " | t-SNE (perplexity=" + perps(p) + ")")
+			legend('show', 'Location', 'bestoutside')
+		end
+	end
+
+	summary = struct(...
+		'groupLabel', groupLabel, ...
+		'perplexities', perps(:), ...
+		'losses', losses, ...
+		'meanCentroidDist2D', meanDist, ...
+		'numSamples', size(Xz,1));
+
+	fprintf('\n%s t-SNE losses:\n', groupLabel);
+	for p = 1:numel(perps)
+		fprintf('  Perplexity %d -> loss %.4f\n', perps(p), losses(p));
+	end
+end
+
+function [X, materials] = collectForceData(dataList)
+	% Middle sensor force is stored in sensor_matrices_force columns 10:12
+	X = [];
+	materials = strings(0,1);
+	for i = 1:numel(dataList)
+		d = dataList{i};
+		if ~isfield(d, 'sensor_matrices_force')
+			error('Input data is missing sensor_matrices_force field.');
+		end
+		F = d.sensor_matrices_force(:, 10:12);  % Fx,Fy,Fz of middle sensor
+		X = [X; F]; %#ok<AGROW>
+		materials = [materials; repmat(string(d.name), size(F,1), 1)]; %#ok<AGROW>
+	end
+end
+
+function [Xz] = standardizeFeatures(X)
+	mu = mean(X, 1);
+	sigma = std(X, 0, 1);
+	sigma(sigma == 0) = eps;
+	Xz = (X - mu) ./ sigma;
+end
+
+function perps = validatePerplexities(perplexities, nSamples)
+	% More conservative: tsne needs at least 3*perplexity + 1 samples
+	% Also cap at (nSamples-1)/4 to avoid convergence issues
+	maxPerp = min(floor((nSamples - 1) / 4), 50);
+	if maxPerp < 2
+		maxPerp = 2;
+	end
+	perps = unique(min(perplexities, maxPerp));
+	if isempty(perps)
+		perps = min(5, maxPerp);
+	end
+end
+
+function d = meanCentroidDistance(Y, materials)
+	mats = unique(materials);
+	centroids = zeros(numel(mats), 2);
+	for i = 1:numel(mats)
+		idx = materials == mats(i);
+		centroids(i,:) = mean(Y(idx,1:2), 1);
+	end
+	if size(centroids,1) < 2
+		d = NaN;
+		return;
+	end
+	dsum = 0; cnt = 0;
+	for i = 1:size(centroids,1)-1
+		for j = i+1:size(centroids,1)
+			dsum = dsum + norm(centroids(i,:) - centroids(j,:));
+			cnt = cnt + 1;
+		end
+	end
+	d = dsum / cnt;
+end
+
+function plotMaterialScatter2D(x, y, materials)
+	mats = unique(materials);
+	for i = 1:numel(mats)
+		idx = materials == mats(i);
+		if any(idx)
+			Utilities.plotByMaterial(x(idx), y(idx), mats(i), ...
+				'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 8, 'DisplayName', char(mats(i)));
+			hold on
+		end
+	end
+end
+
+function commentOnOutcomesTSNE(cylSummary, obSummary)
+	if isempty(fieldnames(cylSummary)) || isempty(fieldnames(obSummary))
+		return;
+	end
+
+	cylLoss = mean(cylSummary.losses);
+	obLoss = mean(obSummary.losses);
+	cylSep = mean(cylSummary.meanCentroidDist2D);
+	obSep = mean(obSummary.meanCentroidDist2D);
+
+	fprintf('\nComment (t-SNE outcomes between objects):\n');
+	fprintf('Cylinders mean loss %.4f, mean separation %.3f.\n', cylLoss, cylSep);
+	fprintf('Oblongs   mean loss %.4f, mean separation %.3f.\n', obLoss, obSep);
+
+	if cylSep > obSep
+		sep = "greater";
+	else
+		sep = "smaller";
+	end
+	fprintf('Overall, cylinders show %s embedding separation than oblongs (using the same perplexities).\n', sep);
+end
+
+function commentOnTSNEvsPCA(cylinders, oblongs)
+	if isempty(cylinders) || isempty(oblongs)
+		return;
+	end
+
+	[Xc, matC] = collectForceData(cylinders);
+	[Xo, matO] = collectForceData(oblongs);
+
+	[scoreC] = computePCA2D(Xc);
+	[scoreO] = computePCA2D(Xo);
+
+	pcaSepC = meanCentroidDistance(scoreC, matC);
+	pcaSepO = meanCentroidDistance(scoreO, matO);
+
+	fprintf('\nComment (t-SNE vs PCA):\n');
+	fprintf('PCA separation (cylinders) %.3f, (oblongs) %.3f.\n', pcaSepC, pcaSepO);
+	fprintf('t-SNE can emphasize non-linear structure compared to PCA, so separations may increase or reorder by material.\n\n');
+end
+
+function score2D = computePCA2D(X)
+	[Xz] = standardizeFeatures(X);
+	C = cov(Xz, 1);
+	[V, D] = eig(C);
+	latent = max(diag(D), 0);
+	[~, idx] = sort(latent, 'descend');
+	coeff = V(:, idx);
+	score = Xz * coeff;
+	score2D = score(:,1:2);
+end
