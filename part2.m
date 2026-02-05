@@ -1,7 +1,8 @@
 function part2(varargin)
     % part2  PCA analysis on force data for cylinder and oblong objects.
-    % Usage: part2(cyl_normal, cyl_rubber, cyl_tpu, oblong_normal,
-    %              oblong_rubber, oblong_tpu, showFigs)
+    % Usage: part2(cyl_normal, cyl_rubber, cyl_tpu, hex_normal, hex_rubber, hex_tpu,
+    %              oblong_normal, oblong_rubber, oblong_tpu, showFigs)
+    % Note: hexagon data is accepted but only cylinder and oblong are analyzed.
 
     if nargin == 0
         error('part2 expects data structures as input.');
@@ -31,10 +32,8 @@ function part2(varargin)
         end
     end
 
-    cylSummary = runGroupPCA(cylinders, 'Cylinder', showFigs);
-    obSummary = runGroupPCA(oblongs, 'Oblong', showFigs);
-
-    commentOnOutcomes(cylSummary, obSummary);
+    runGroupPCA(cylinders, 'Cylinder', showFigs);
+    runGroupPCA(oblongs, 'Oblong', showFigs);
 
     % Part 3: all nine papillae (all objects, one plot per shape)
     runAllPapillaePCA(dataArgs, showFigs);
@@ -120,15 +119,10 @@ function [Xz, coeff, score, latent] = computePCA(X)
     mu = mean(X, 1);
     sigma = std(X, 0, 1);
     sigma(sigma == 0) = eps;  % avoid divide-by-zero
-    Xz = (X - mu) ./ sigma;  % manual z-score (no toolbox)
+    Xz = (X - mu) ./ sigma;  % manual z-score standardization
 
-    % PCA without Statistics Toolbox: eigendecomposition of covariance
-    C = cov(Xz, 1);  % normalize by N
-    [V, D] = eig(C);
-    latent = max(diag(D), 0);                % guard tiny negatives
-    [latent, idx] = sort(latent, 'descend'); % sort descending
-    coeff = V(:, idx);
-    score = Xz * coeff;
+    % Use Statistics Toolbox pca function
+    [coeff, score, latent] = pca(Xz, 'Centered', false);
 end
 
 function summary = summarizePCA(score, materials, latent, groupLabel)
@@ -160,33 +154,6 @@ function summary = summarizePCA(score, materials, latent, groupLabel)
         'explainedFirst2', first2, ...
         'meanCentroidDist2D', meanDist, ...
         'numSamples', size(score,1));
-end
-
-function commentOnOutcomes(cylSummary, obSummary)
-    if isempty(fieldnames(cylSummary)) || isempty(fieldnames(obSummary))
-        return;
-    end
-
-    fprintf('\nPart 2b comment (data-driven):\n');
-    fprintf('Cylinders: PC1-2 explain %.1f%%, mean centroid separation %.3f.\n', ...
-        100 * cylSummary.explainedFirst2, cylSummary.meanCentroidDist2D);
-    fprintf('Oblongs:   PC1-2 explain %.1f%%, mean centroid separation %.3f.\n', ...
-        100 * obSummary.explainedFirst2, obSummary.meanCentroidDist2D);
-
-    if cylSummary.meanCentroidDist2D > obSummary.meanCentroidDist2D
-        sep = "greater";
-    else
-        sep = "smaller";
-    end
-
-    if cylSummary.explainedFirst2 > obSummary.explainedFirst2
-        varLabel = "more";
-    else
-        varLabel = "less";
-    end
-
-    fprintf('Overall, cylinders show %s separation in PC1-2 with %s variance captured in 2D than oblongs.\n\n', ...
-        sep, varLabel);
 end
 
 function [X, materials] = collectAllPapillaeForceData(dataList)

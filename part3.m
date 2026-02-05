@@ -40,12 +40,10 @@ function part3(varargin)
 
 	perplexities = [5, 30];
 
-	cylSummary = runTSNEGroup(cylinders, 'Cylinder', perplexities, showFigs);
+	runTSNEGroup(cylinders, 'Cylinder', perplexities, showFigs);
 	% Repeat for either hexagon or oblong (choose oblong here)
-	obSummary = runTSNEGroup(oblongs, 'Oblong', perplexities, showFigs);
-
-	commentOnOutcomesTSNE(cylSummary, obSummary);
-	commentOnTSNEvsPCA(cylinders, oblongs);
+	runTSNEGroup(oblongs, 'Oblong', perplexities, showFigs);
+    % runTSNEGroup(hexagons, 'Hexagon', perplexities, showFigs);
 end
 
 function summary = runTSNEGroup(dataList, groupLabel, perplexities, showFigs)
@@ -171,56 +169,4 @@ function plotMaterialScatter2D(x, y, materials)
 			hold on
 		end
 	end
-end
-
-function commentOnOutcomesTSNE(cylSummary, obSummary)
-	if isempty(fieldnames(cylSummary)) || isempty(fieldnames(obSummary))
-		return;
-	end
-
-	cylLoss = mean(cylSummary.losses);
-	obLoss = mean(obSummary.losses);
-	cylSep = mean(cylSummary.meanCentroidDist2D);
-	obSep = mean(obSummary.meanCentroidDist2D);
-
-	fprintf('\nComment (t-SNE outcomes between objects):\n');
-	fprintf('Cylinders mean loss %.4f, mean separation %.3f.\n', cylLoss, cylSep);
-	fprintf('Oblongs   mean loss %.4f, mean separation %.3f.\n', obLoss, obSep);
-
-	if cylSep > obSep
-		sep = "greater";
-	else
-		sep = "smaller";
-	end
-	fprintf('Overall, cylinders show %s embedding separation than oblongs (using the same perplexities).\n', sep);
-end
-
-function commentOnTSNEvsPCA(cylinders, oblongs)
-	if isempty(cylinders) || isempty(oblongs)
-		return;
-	end
-
-	[Xc, matC] = collectForceData(cylinders);
-	[Xo, matO] = collectForceData(oblongs);
-
-	[scoreC] = computePCA2D(Xc);
-	[scoreO] = computePCA2D(Xo);
-
-	pcaSepC = meanCentroidDistance(scoreC, matC);
-	pcaSepO = meanCentroidDistance(scoreO, matO);
-
-	fprintf('\nComment (t-SNE vs PCA):\n');
-	fprintf('PCA separation (cylinders) %.3f, (oblongs) %.3f.\n', pcaSepC, pcaSepO);
-	fprintf('t-SNE can emphasize non-linear structure compared to PCA, so separations may increase or reorder by material.\n\n');
-end
-
-function score2D = computePCA2D(X)
-	[Xz] = standardizeFeatures(X);
-	C = cov(Xz, 1);
-	[V, D] = eig(C);
-	latent = max(diag(D), 0);
-	[~, idx] = sort(latent, 'descend');
-	coeff = V(:, idx);
-	score = Xz * coeff;
-	score2D = score(:,1:2);
 end

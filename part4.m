@@ -36,9 +36,6 @@ function part4(varargin)
 
     % d. Apply LDA to 3D displacement data
     applyLDA3D(X1, X2, data1.name, data2.name, showFigs);
-
-    % e. Comment on outcomes
-    commentOnLDAOutcomes(X1, X2, data1.name, data2.name);
 end
 
 function [X1, X2] = extractCentralDisplacement(data1, data2)
@@ -278,47 +275,4 @@ function plotDiscriminationPlane(w, threshold, X1, X2)
         % Degenerate case: plot as line
         warning('Discrimination plane is degenerate (perpendicular to z-axis).');
     end
-end
-
-function commentOnLDAOutcomes(X1, X2, name1, name2)
-    fprintf('\n=== Comment on LDA outcomes ===\n');
-    
-    % Compute means and covariances
-    mu1 = mean(X1, 1);
-    mu2 = mean(X2, 1);
-    cov1 = cov(X1);
-    cov2 = cov(X2);
-    
-    % Displacement magnitudes
-    mag1 = mean(sqrt(sum(X1.^2, 2)));
-    mag2 = mean(sqrt(sum(X2.^2, 2)));
-    
-    fprintf('Mean displacement magnitude: %s = %.4f, %s = %.4f\n', ...
-        name1, mag1, name2, mag2);
-    
-    % Analyze physical properties
-    if contains(lower(name1), 'tpu') && contains(lower(name2), 'rubber')
-        fprintf('\nPhysical interpretation:\n');
-        fprintf('TPU (thermoplastic polyurethane) is typically stiffer and more elastic than rubber.\n');
-        fprintf('Rubber tends to be softer and more compliant, leading to different displacement patterns.\n');
-        
-        if mag1 > mag2
-            fprintf('TPU shows larger displacements, possibly due to more elastic deformation.\n');
-        else
-            fprintf('Rubber shows larger displacements, consistent with its higher compliance.\n');
-        end
-        
-        fprintf('\nCovariance analysis:\n');
-        fprintf('TPU displacement variance: [%.4f, %.4f, %.4f]\n', diag(cov1)');
-        fprintf('Rubber displacement variance: [%.4f, %.4f, %.4f]\n', diag(cov2)');
-        
-        if mean(diag(cov1)) > mean(diag(cov2))
-            fprintf('TPU shows higher variance, indicating more variable sensor response.\n');
-        else
-            fprintf('Rubber shows higher variance, indicating more variable deformation.\n');
-        end
-    end
-    
-    fprintf('\nLDA successfully discriminates between materials based on tactile displacement.\n');
-    fprintf('The discrimination plane/line captures the direction of maximum class separation.\n\n');
 end
