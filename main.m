@@ -39,10 +39,10 @@ partC(extractedData, showFigs)
 partD(extractedData, showFigs)
 
 % Part E - Clustering on extracted force/displacement data
-% partE(extractedData, showFigs)
+partE(extractedData, showFigs)
 
 % Part F - GMM on extracted displacement data
-% partF(extractedData, showFigs)
+partF(extractedData, showFigs)
 
 % Part G - Bagging on extracted displacement data
-% partG(extractedData, showFigs)
+partG(extractedData, showFigs)
