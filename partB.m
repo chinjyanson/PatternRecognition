@@ -1,29 +1,26 @@
-function part2(varargin)
-    % part2  PCA analysis on force data for cylinder and oblong objects.
-    % Usage: part2(cyl_normal, cyl_rubber, cyl_tpu, hex_normal, hex_rubber, hex_tpu,
-    %              oblong_normal, oblong_rubber, oblong_tpu, showFigs)
+function partB(extractedData, showFigs)
+    % partB  PCA analysis on extracted contact force data for cylinder and oblong objects.
+    % Usage: partB(extractedData, showFigs)
+    %   extractedData - struct from partA containing contact data for all materials
+    %   showFigs - boolean to control figure display
     % Note: hexagon data is accepted but only cylinder and oblong are analyzed.
 
-    if nargin == 0
-        error('part2 expects data structures as input.');
-    end
-
-    if islogical(varargin{end})
-        showFigs = varargin{end};
-        dataArgs = varargin(1:end-1);
-    else
+    if nargin < 2
         showFigs = true;
-        dataArgs = varargin;
     end
 
-    % Split inputs into cylinder and oblong groups by name
+    % Get field names and separate by shape
+    fields = fieldnames(extractedData);
     cylinders = {};
     oblongs = {};
-    for i = 1:numel(dataArgs)
-        d = dataArgs{i};
+    allData = {};
+
+    for i = 1:numel(fields)
+        d = extractedData.(fields{i});
         if ~isfield(d, 'name')
-            error('Each input must have a .name field indicating material.');
+            continue;
         end
+        allData{end+1} = d; %#ok<AGROW>
         n = lower(string(d.name));
         if contains(n, 'cylinder')
             cylinders{end+1} = d; %#ok<AGROW>
@@ -36,7 +33,7 @@ function part2(varargin)
     runGroupPCA(oblongs, 'Oblong', showFigs);
 
     % Part 3: all nine papillae (all objects, one plot per shape)
-    runAllPapillaePCA(dataArgs, showFigs);
+    runAllPapillaePCA(allData, showFigs);
 end
 
 function summary = runGroupPCA(dataList, groupLabel, showFigs)
@@ -60,15 +57,21 @@ function summary = runGroupPCA(dataList, groupLabel, showFigs)
 end
 
 function [X, materials] = collectForceData(dataList)
-    % Middle sensor force is stored in sensor_matrices_force columns 10:12
+    % Middle papillae (P4) force is stored in columns 13:15
+    % Layout: P0(1:3), P1(4:6), P2(7:9), P3(10:12), P4(13:15), P5(16:18), P6(19:21), P7(22:24), P8(25:27)
+    % Supports both raw data (sensor_matrices_force) and extracted data (force)
     X = [];
     materials = strings(0,1);
     for i = 1:numel(dataList)
         d = dataList{i};
-        if ~isfield(d, 'sensor_matrices_force')
-            error('Input data is missing sensor_matrices_force field.');
+        % Check for extracted contact data format first, then raw format
+        if isfield(d, 'force')
+            F = d.force(:, 13:15);  % Fx,Fy,Fz of middle sensor (P4)
+        elseif isfield(d, 'sensor_matrices_force')
+            F = d.sensor_matrices_force(:, 13:15);
+        else
+            error('Input data is missing force data field.');
         end
-        F = d.sensor_matrices_force(:, 10:12);  % Fx,Fy,Fz of middle sensor
         X = [X; F]; %#ok<AGROW>
         materials = [materials; repmat(string(d.name), size(F,1), 1)]; %#ok<AGROW>
     end
@@ -157,14 +160,19 @@ function summary = summarizePCA(score, materials, latent, groupLabel)
 end
 
 function [X, materials] = collectAllPapillaeForceData(dataList)
+    % Supports both raw data (sensor_matrices_force) and extracted data (force)
     X = [];
     materials = strings(0,1);
     for i = 1:numel(dataList)
         d = dataList{i};
-        if ~isfield(d, 'sensor_matrices_force')
-            error('Input data is missing sensor_matrices_force field.');
+        % Check for extracted contact data format first, then raw format
+        if isfield(d, 'force')
+            Ffull = d.force;
+        elseif isfield(d, 'sensor_matrices_force')
+            Ffull = d.sensor_matrices_force;
+        else
+            error('Input data is missing force data field.');
         end
-        Ffull = d.sensor_matrices_force;
         if size(Ffull,2) >= 27
             F = Ffull(:, 1:27);
         else

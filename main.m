@@ -23,20 +23,26 @@ oblong_TPU      = load(base + "oblong_TPU_papillarray_single.mat");
 oblong_TPU.name = "oblong_TPU";
 disp("Data loading completed")
 
-% Part A
-partA(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
+% Part A - Visualization and contact data extraction
+% Returns extracted contact data (force/displacement at peak contact moments)
+extractedData = partA(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
     hexagon_normal, hexagon_rubber, hexagon_TPU, ...
-    oblong_normal, oblong_rubber, oblong_TPU, showFigs)
+    oblong_normal, oblong_rubber, oblong_TPU, showFigs);
 
-% Part B
-partB(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
-    hexagon_normal, hexagon_rubber, hexagon_TPU, ...
-    oblong_normal, oblong_rubber, oblong_TPU, showFigs)
+% Part B - PCA on extracted force data
+partB(extractedData, showFigs)
 
-% Part C
-partC(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
-    hexagon_normal, hexagon_rubber, hexagon_TPU, ...
-    oblong_normal, oblong_rubber, oblong_TPU, showFigs)
+% Part C - t-SNE on extracted force data
+partC(extractedData, showFigs)
 
-% Part D
-partD(oblong_TPU, oblong_rubber, showFigs)
+% Part D - LDA on extracted displacement data
+partD(extractedData, showFigs)
+
+% Part E - Clustering on extracted force/displacement data
+% partE(extractedData, showFigs)
+
+% Part F - GMM on extracted displacement data
+% partF(extractedData, showFigs)
+
+% Part G - Bagging on extracted displacement data
+% partG(extractedData, showFigs)

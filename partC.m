@@ -1,32 +1,27 @@
-function part3(varargin)
-	% part3  t-SNE on middle sensor force data.
-	% Usage: part3(cyl_normal, cyl_rubber, cyl_tpu, hex_normal, hex_rubber,
-	%             hex_tpu, oblong_normal, oblong_rubber, oblong_tpu, showFigs)
+function partC(extractedData, showFigs)
+	% partC  t-SNE on extracted contact force data.
+	% Usage: partC(extractedData, showFigs)
+	%   extractedData - struct from partA containing contact data for all materials
+	%   showFigs - boolean to control figure display
 
-	if nargin == 0
-		error('part3 expects data structures as input.');
-	end
-
-	if islogical(varargin{end})
-		showFigs = varargin{end};
-		dataArgs = varargin(1:end-1);
-	else
+	if nargin < 2
 		showFigs = true;
-		dataArgs = varargin;
 	end
 
 	if exist('tsne', 'file') ~= 2
 		error('t-SNE requires the Statistics and Machine Learning Toolbox (tsne function not found).');
 	end
 
-	% Split inputs into groups by name
+	% Get field names and separate by shape
+	fields = fieldnames(extractedData);
 	cylinders = {};
 	hexagons = {};
 	oblongs = {};
-	for i = 1:numel(dataArgs)
-		d = dataArgs{i};
+
+	for i = 1:numel(fields)
+		d = extractedData.(fields{i});
 		if ~isfield(d, 'name')
-			error('Each input must have a .name field indicating material.');
+			continue;
 		end
 		n = lower(string(d.name));
 		if contains(n, 'cylinder')
@@ -43,7 +38,7 @@ function part3(varargin)
 	runTSNEGroup(cylinders, 'Cylinder', perplexities, showFigs);
 	% Repeat for either hexagon or oblong (choose oblong here)
 	runTSNEGroup(oblongs, 'Oblong', perplexities, showFigs);
-    % runTSNEGroup(hexagons, 'Hexagon', perplexities, showFigs);
+	% runTSNEGroup(hexagons, 'Hexagon', perplexities, showFigs);
 end
 
 function summary = runTSNEGroup(dataList, groupLabel, perplexities, showFigs)
@@ -104,15 +99,21 @@ function summary = runTSNEGroup(dataList, groupLabel, perplexities, showFigs)
 end
 
 function [X, materials] = collectForceData(dataList)
-	% Middle sensor force is stored in sensor_matrices_force columns 10:12
+	% Middle papillae (P4) force is stored in columns 13:15
+	% Layout: P0(1:3), P1(4:6), P2(7:9), P3(10:12), P4(13:15), P5(16:18), P6(19:21), P7(22:24), P8(25:27)
+	% Supports both raw data (sensor_matrices_force) and extracted data (force)
 	X = [];
 	materials = strings(0,1);
 	for i = 1:numel(dataList)
 		d = dataList{i};
-		if ~isfield(d, 'sensor_matrices_force')
-			error('Input data is missing sensor_matrices_force field.');
+		% Check for extracted contact data format first, then raw format
+		if isfield(d, 'force')
+			F = d.force(:, 13:15);  % Fx,Fy,Fz of middle sensor (P4)
+		elseif isfield(d, 'sensor_matrices_force')
+			F = d.sensor_matrices_force(:, 13:15);
+		else
+			error('Input data is missing force data field.');
 		end
-		F = d.sensor_matrices_force(:, 10:12);  % Fx,Fy,Fz of middle sensor
 		X = [X; F]; %#ok<AGROW>
 		materials = [materials; repmat(string(d.name), size(F,1), 1)]; %#ok<AGROW>
 	end

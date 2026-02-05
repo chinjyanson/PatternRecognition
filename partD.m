@@ -1,29 +1,38 @@
-function part4(varargin)
-    % part4  Linear Discriminant Analysis on tactile displacement data.
-    % Usage: part4(oblong_tpu, oblong_rubber, showFigs)
+function partD(extractedData, showFigs)
+    % partD  Linear Discriminant Analysis on extracted contact displacement data.
+    % Usage: partD(extractedData, showFigs)
+    %   extractedData - struct from partA containing contact data for all materials
+    %   showFigs - boolean to control figure display
 
-    if nargin == 0
-        error('part4 expects data structures as input.');
-    end
-
-    if islogical(varargin{end})
-        showFigs = varargin{end};
-        dataArgs = varargin(1:end-1);
-    else
+    if nargin < 2
         showFigs = true;
-        dataArgs = varargin;
     end
 
-    if numel(dataArgs) ~= 2
-        error('part4 expects exactly 2 data structures (oblong_tpu and oblong_rubber).');
+    % Find oblong_TPU and oblong_rubber in extracted data
+    fields = fieldnames(extractedData);
+    data1 = [];
+    data2 = [];
+
+    for i = 1:numel(fields)
+        d = extractedData.(fields{i});
+        if ~isfield(d, 'name')
+            continue;
+        end
+        n = lower(string(d.name));
+        if contains(n, 'oblong') && contains(n, 'tpu')
+            data1 = d;
+        elseif contains(n, 'oblong') && contains(n, 'rubber')
+            data2 = d;
+        end
     end
 
-    data1 = dataArgs{1};
-    data2 = dataArgs{2};
+    if isempty(data1) || isempty(data2)
+        error('partD requires oblong_TPU and oblong_rubber data in extractedData.');
+    end
 
     % Extract central papillae displacement (columns 10:12 for middle sensor)
     [X1, X2] = extractCentralDisplacement(data1, data2);
-    
+
     % b. Visualize 3D displacement
     if showFigs
         visualize3DDisplacement(X1, X2, data1.name, data2.name);
@@ -39,16 +48,27 @@ function part4(varargin)
 end
 
 function [X1, X2] = extractCentralDisplacement(data1, data2)
-    % Central papillae displacement is columns 10:12 (D_X, D_Y, D_Z)
-    if ~isfield(data1, 'sensor_matrices_displacement')
-        error('Input data is missing sensor_matrices_displacement field.');
+    % Central papillae (P4) displacement is columns 13:15 (D_X, D_Y, D_Z)
+    % Layout: P0(1:3), P1(4:6), P2(7:9), P3(10:12), P4(13:15), P5(16:18), P6(19:21), P7(22:24), P8(25:27)
+    % Supports both raw data (sensor_matrices_displacement) and extracted data (displacement)
+
+    % Extract from data1
+    if isfield(data1, 'displacement')
+        X1 = data1.displacement(:, 13:15);
+    elseif isfield(data1, 'sensor_matrices_displacement')
+        X1 = data1.sensor_matrices_displacement(:, 13:15);
+    else
+        error('Input data1 is missing displacement data field.');
     end
-    if ~isfield(data2, 'sensor_matrices_displacement')
-        error('Input data is missing sensor_matrices_displacement field.');
+
+    % Extract from data2
+    if isfield(data2, 'displacement')
+        X2 = data2.displacement(:, 13:15);
+    elseif isfield(data2, 'sensor_matrices_displacement')
+        X2 = data2.sensor_matrices_displacement(:, 13:15);
+    else
+        error('Input data2 is missing displacement data field.');
     end
-    
-    X1 = data1.sensor_matrices_displacement(:, 10:12);
-    X2 = data2.sensor_matrices_displacement(:, 10:12);
 end
 
 function visualize3DDisplacement(X1, X2, name1, name2)
