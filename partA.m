@@ -1,13 +1,46 @@
 function part1(varargin)
-    % Main function that calls others
+    % part1  Visualize end-effector trajectories and force/torque data for all object shapes.
+    % Usage: part1(cyl_normal, cyl_rubber, cyl_tpu, hex_normal, hex_rubber, hex_tpu,
+    %              oblong_normal, oblong_rubber, oblong_tpu, showFigs)
+    
     arg_length = length(varargin);
     showFigs = varargin{arg_length};
+    
+    % Parse data and separate into shapes
+    cylinders = {};
+    hexagons = {};
+    oblongs = {};
+    
     for i = 1:arg_length-1
-        materialName = inputname(i);  % Get variable name from caller
-        displayEndEffectorPositions(varargin{i}, materialName, showFigs);
-        [ft_peaks, ft_troughs] = obtainForceTorquePeaks(varargin{i});
-        displayForceTorque(varargin{i}, ft_peaks, ft_troughs, materialName, showFigs);
-        display3DForceDataMiddlePapillae(varargin{i}, materialName, showFigs);
+        data = varargin{i};
+        if isfield(data, 'name')
+            n = lower(string(data.name));
+            if contains(n, 'cylinder')
+                cylinders{end+1} = data; %#ok<AGROW>
+            elseif contains(n, 'hexagon')
+                hexagons{end+1} = data; %#ok<AGROW>
+            elseif contains(n, 'oblong')
+                oblongs{end+1} = data; %#ok<AGROW>
+            end
+        end
+    end
+    
+    % Display end-effector positions for cylinder and hexagon only
+    allCylHex = [cylinders, hexagons];
+    for i = 1:numel(allCylHex)
+        data = allCylHex{i};
+        materialName = data.name;
+        displayEndEffectorPositions(data, materialName, showFigs);
+    end
+    
+    % Force/torque and middle papillae for all objects
+    allData = [cylinders, hexagons, oblongs];
+    for i = 1:numel(allData)
+        data = allData{i};
+        materialName = data.name;
+        [ft_peaks, ft_troughs] = obtainForceTorquePeaks(data);
+        displayForceTorque(data, ft_peaks, ft_troughs, materialName, showFigs);
+        display3DForceDataMiddlePapillae(data, materialName, showFigs);
     end
 end
 

@@ -23,19 +23,20 @@ oblong_TPU      = load(base + "oblong_TPU_papillarray_single.mat");
 oblong_TPU.name = "oblong_TPU";
 disp("Data loading completed")
 
-% Part 1 
-part1(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
-    hexagon_normal, hexagon_rubber, hexagon_TPU, showFigs)
-
-% Part 2
-part2(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
+% Part A
+partA(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
     hexagon_normal, hexagon_rubber, hexagon_TPU, ...
     oblong_normal, oblong_rubber, oblong_TPU, showFigs)
 
-% Part 3
-part3(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
+% Part B
+partB(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
     hexagon_normal, hexagon_rubber, hexagon_TPU, ...
     oblong_normal, oblong_rubber, oblong_TPU, showFigs)
 
-% Part 4
-part4(oblong_TPU, oblong_rubber, showFigs)
+% Part C
+partC(cylinder_normal, cylinder_rubber, cylinder_TPU, ...
+    hexagon_normal, hexagon_rubber, hexagon_TPU, ...
+    oblong_normal, oblong_rubber, oblong_TPU, showFigs)
+
+% Part D
+partD(oblong_TPU, oblong_rubber, showFigs)
