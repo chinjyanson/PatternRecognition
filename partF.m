@@ -32,11 +32,11 @@ function partF(extractedData, showFigs)
     % Collect displacement data from central papillae (P4) - columns 13:15
     [X, materials] = collectDisplacementData(oblongs);
 
-    % Use 2 components of displacement (D_X and D_Y) as specified in F.1.a
-    X2D = X(:, 1:2);
+    % Use D_X and D_Z (columns 1 and 3) for better material separation
+    X2D = X(:, [1, 3]);
 
     fprintf('\n=== Part F: Gaussian Mixture Model ===\n');
-    fprintf('Using 2D displacement data (D_X, D_Y) from central papillae\n');
+    fprintf('Using 2D displacement data (D_X, D_Z) from central papillae\n');
     fprintf('Total samples: %d\n\n', size(X2D,1));
 
     % F.1.a: 2D scatter plot with ground truth colors
@@ -105,8 +105,8 @@ function plotGroundTruth2D(X, materials, shapeLabel)
     hold off
     grid on
     axis equal
-    xlabel('D_X (Displacement)');
-    ylabel('D_Y (Displacement)');
+    xlabel('D_X (Displacement) (m)');
+    ylabel('D_Z (Displacement) (m)');
     title(sprintf('%s - Ground Truth Material Labels', shapeLabel))
     legend('show', 'Location', 'bestoutside')
 end
@@ -117,37 +117,83 @@ function gmmModel = fitGMM(X, nComponents)
 
     rng(42);  % For reproducibility
     options = statset('MaxIter', 1000);
+
+    % Use minimal regularization to capture true data covariance
+    % Lower regularization = tighter, more accurate contours
     gmmModel = fitgmdist(X, nComponents, ...
         'CovarianceType', 'full', ...
         'SharedCovariance', false, ...
-        'RegularizationValue', 0.01, ...
-        'Options', options);
+        'RegularizationValue', 1e-6, ...
+        'Options', options, ...
+        'Replicates', 5);  % Try multiple starts for better fit
 
     fprintf('  Converged: %s\n', mat2str(gmmModel.Converged));
     fprintf('  NegLogLikelihood: %.4f\n', gmmModel.NegativeLogLikelihood);
+
+    % Print component means and proportions
+    fprintf('  Component means:\n');
+    for k = 1:nComponents
+        fprintf('    C%d: [%.4f, %.4f], weight=%.2f%%\n', k, ...
+            gmmModel.mu(k,1), gmmModel.mu(k,2), gmmModel.ComponentProportion(k)*100);
+    end
 end
 
 function plotGMMContour(X, materials, gmmModel, shapeLabel)
-    % F.1.b: Plot GMM contours with scatter overlay
+    % F.1.b: Plot GMM probability density contours with scatter overlay
+    % Shows separate contour regions for each Gaussian component
     figure('Name', sprintf('%s - GMM Contour Plot', shapeLabel));
 
-    % Create grid for contour
-    margin = 0.1;
-    xRange = [min(X(:,1)) - margin, max(X(:,1)) + margin];
-    yRange = [min(X(:,2)) - margin, max(X(:,2)) + margin];
+    % Create grid for contour evaluation - use data range with small margin
+    dataRangeX = max(X(:,1)) - min(X(:,1));
+    dataRangeY = max(X(:,2)) - min(X(:,2));
+    marginX = max(0.02, dataRangeX * 0.3);  % 30% margin or minimum 0.02
+    marginY = max(0.02, dataRangeY * 0.3);
 
-    [xGrid, yGrid] = meshgrid(linspace(xRange(1), xRange(2), 100), ...
-                               linspace(yRange(1), yRange(2), 100));
+    xRange = [min(X(:,1)) - marginX, max(X(:,1)) + marginX];
+    yRange = [min(X(:,2)) - marginY, max(X(:,2)) + marginY];
+
+    [xGrid, yGrid] = meshgrid(linspace(xRange(1), xRange(2), 200), ...
+                               linspace(yRange(1), yRange(2), 200));
     gridPoints = [xGrid(:), yGrid(:)];
 
-    % Evaluate GMM PDF
-    pdfValues = pdf(gmmModel, gridPoints);
-    pdfGrid = reshape(pdfValues, size(xGrid));
+    nComponents = gmmModel.NumComponents;
 
-    % Plot contour
+    % Compute PDF for each component separately (weighted by mixing proportion)
+    componentPDFs = zeros(size(gridPoints, 1), nComponents);
+    for k = 1:nComponents
+        mu_k = gmmModel.mu(k, :);
+        Sigma_k = gmmModel.Sigma(:, :, k);
+        weight_k = gmmModel.ComponentProportion(k);
+
+        % Compute multivariate normal PDF for this component
+        diff = gridPoints - mu_k;
+        mahalDist = sum((diff / Sigma_k) .* diff, 2);
+        detSigma = det(Sigma_k);
+        componentPDFs(:, k) = weight_k * (2*pi)^(-1) * detSigma^(-0.5) * exp(-0.5 * mahalDist);
+    end
+
+    % Compute total GMM PDF (sum of all components)
+    totalPDF = sum(componentPDFs, 2);
+    totalPDFGrid = reshape(totalPDF, size(xGrid));
+
     hold on
-    contour(xGrid, yGrid, pdfGrid, 20, 'LineWidth', 1);
-    colorbar;
+
+    % Draw unified contour lines for total GMM PDF
+    contour(xGrid, yGrid, totalPDFGrid, 20, 'LineWidth', 1, ...
+        'HandleVisibility', 'off');
+    colormap(parula);
+    cb = colorbar;
+    ylabel(cb, 'Probability Density');
+
+    % Mark component means with labels
+    for k = 1:nComponents
+        mu_k = gmmModel.mu(k, :);
+        scatter(mu_k(1), mu_k(2), 200, 'k', 'p', 'filled', ...
+            'MarkerEdgeColor', 'w', 'LineWidth', 2, 'HandleVisibility', 'off');
+        text(mu_k(1) + 0.005, mu_k(2) + 0.01, sprintf('C%d', k), ...
+            'FontSize', 12, 'FontWeight', 'bold', 'Color', 'k', ...
+            'BackgroundColor', 'w');
+    end
 
     % Overlay scatter plot with ground truth colors
     mats = unique(materials);
@@ -158,16 +204,11 @@ function plotGMMContour(X, materials, gmmModel, shapeLabel)
             'DisplayName', char(mats(i)));
     end
 
-    % Plot component means
-    scatter(gmmModel.mu(:,1), gmmModel.mu(:,2), 200, 'k', 'x', ...
-        'LineWidth', 3, 'DisplayName', 'GMM Means');
-
     hold off
     grid on
-    axis equal
-    xlabel('D_X (Displacement)');
-    ylabel('D_Y (Displacement)');
-    title(sprintf('%s - GMM Contour with Scatter Overlay', shapeLabel))
+    xlabel('D_X (Displacement) (m)');
+    ylabel('D_Z (Displacement) (m)');
+    title(sprintf('%s - F.b: GMM Probability Density Contours with Data Overlay', shapeLabel))
     legend('show', 'Location', 'bestoutside')
 end
 
@@ -199,8 +240,8 @@ function plotGMM3DSurface(X, gmmModel, shapeLabel)
         pdf(gmmModel, gmmModel.mu), 200, 'k', 'x', 'LineWidth', 3);
     hold off
 
-    xlabel('D_X (Displacement)');
-    ylabel('D_Y (Displacement)');
+    xlabel('D_X (Displacement) (m)');
+    ylabel('D_Z (Displacement) (m)');
     zlabel('Probability Density');
     title(sprintf('%s - GMM Probability Density Surface', shapeLabel))
 
@@ -227,7 +268,7 @@ function plotHardClusters(X, materials, clusterIdx, shapeLabel)
     end
     hold off
     grid on; axis equal
-    xlabel('D_X'); ylabel('D_Y');
+    xlabel('D_X (m)'); ylabel('D_Z (m)');
     title('Ground Truth')
     legend('show', 'Location', 'best')
 
@@ -240,7 +281,7 @@ function plotHardClusters(X, materials, clusterIdx, shapeLabel)
     end
     hold off
     grid on; axis equal
-    xlabel('D_X'); ylabel('D_Y');
+    xlabel('D_X (m)'); ylabel('D_Z (m)');
     title('GMM Hard Clusters')
     legend('show', 'Location', 'best')
 

@@ -65,6 +65,18 @@ function extractedData = partA(varargin)
         plotExtractedForceByShape(oblongs, extractedData, 'Oblong');
     end
 
+    % Print summary of extracted data
+    fprintf('\n=== Extraction Summary ===\n');
+    totalSamples = 0;
+    fields = fieldnames(extractedData);
+    for i = 1:numel(fields)
+        d = extractedData.(fields{i});
+        if isfield(d, 'force')
+            totalSamples = totalSamples + size(d.force, 1);
+        end
+    end
+    fprintf('Total extracted contact samples: %d (across %d objects)\n', totalSamples, numel(fields));
+
     disp('Part A completed. Contact data extracted for future parts.');
 end
 

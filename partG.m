@@ -81,12 +81,22 @@ function partG(extractedData, showFigs)
     accuracy = sum(y_pred_cat == y_test_cat) / length(y_test_cat);
     fprintf('\nOverall Test Accuracy: %.2f%%\n', accuracy * 100);
 
-    % Per-class accuracy
+    % Per-class accuracy with readable names
     fprintf('\nPer-class accuracy:\n');
     for i = 1:length(classes)
         classIdx = y_test_cat == classes{i};
         classAcc = sum(y_pred_cat(classIdx) == y_test_cat(classIdx)) / sum(classIdx);
-        fprintf('  %s: %.2f%%\n', classes{i}, classAcc * 100);
+        % Convert to readable name
+        name = strrep(classes{i}, 'normal', 'single');
+        name = strrep(name, '_', ' ');
+        words = strsplit(name, ' ');
+        for w = 1:length(words)
+            if ~isempty(words{w})
+                words{w} = [upper(words{w}(1)), words{w}(2:end)];
+            end
+        end
+        displayName = strjoin(words, ' ');
+        fprintf('  %-20s: %.2f%%\n', displayName, classAcc * 100);
     end
 
     % Out-of-bag error
@@ -161,25 +171,42 @@ function plotConfusionMatrix(y_true, y_pred, classes)
     % Compute confusion matrix
     C = confusionmat(y_true, y_pred);
 
-    % Plot as heatmap
-    heatmap(classes, classes, C, ...
+    % Create display-friendly class names (e.g., "cylinder_normal" -> "Cylinder Single")
+    displayNames = cell(size(classes));
+    for i = 1:length(classes)
+        name = classes{i};
+        % Replace "normal" with "single" to match dataset naming
+        name = strrep(name, 'normal', 'single');
+        % Replace underscores with spaces and capitalize each word
+        name = strrep(name, '_', ' ');
+        words = strsplit(name, ' ');
+        for w = 1:length(words)
+            if ~isempty(words{w})
+                words{w} = [upper(words{w}(1)), words{w}(2:end)];
+            end
+        end
+        displayNames{i} = strjoin(words, ' ');
+    end
+
+    % Plot as heatmap with readable names
+    heatmap(displayNames, displayNames, C, ...
         'Title', 'Confusion Matrix', ...
         'XLabel', 'Predicted Class', ...
         'YLabel', 'True Class', ...
         'ColorbarVisible', 'on');
 
-    % Also display as text
+    % Also display as text with readable names
     fprintf('\nConfusion Matrix:\n');
     fprintf('%-20s', 'True\\Predicted');
-    for i = 1:length(classes)
-        fprintf('%-15s', classes{i});
+    for i = 1:length(displayNames)
+        fprintf('%-18s', displayNames{i});
     end
     fprintf('\n');
 
-    for i = 1:length(classes)
-        fprintf('%-20s', classes{i});
-        for j = 1:length(classes)
-            fprintf('%-15d', C(i,j));
+    for i = 1:length(displayNames)
+        fprintf('%-20s', displayNames{i});
+        for j = 1:length(displayNames)
+            fprintf('%-18d', C(i,j));
         end
         fprintf('\n');
     end

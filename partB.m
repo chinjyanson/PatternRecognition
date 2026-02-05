@@ -115,7 +115,10 @@ function runShapeAllPapillaePCA(dataList, groupLabel, showFigs)
     title(groupLabel + " | all papillae | 2D PCA projection")
     legend('show', 'Location', 'bestoutside')
 
-    plotScree(latent, groupLabel + " | all papillae");
+    % B.3.b: Scree plot only for cylinder and oblong (per spec)
+    if groupLabel == "Cylinder" || groupLabel == "Oblong"
+        plotScree(latent, groupLabel + " | all papillae");
+    end
 end
 
 function [Xz, coeff, score, latent] = computePCA(X)
