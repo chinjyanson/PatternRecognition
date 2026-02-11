@@ -1,8 +1,8 @@
 function extractedData = partA(varargin)
     % partA  Visualize end-effector trajectories and force/torque data for all object shapes.
     %        Also extracts contact data at maximum force moments for use in later parts.
-    % Usage: extractedData = partA(cyl_normal, cyl_rubber, cyl_tpu, hex_normal, hex_rubber, hex_tpu,
-    %                              oblong_normal, oblong_rubber, oblong_tpu, showFigs)
+    % Usage: extractedData = partA(cyl_single, cyl_rubber, cyl_tpu, hex_single, hex_rubber, hex_tpu,
+    %                              oblong_single, oblong_rubber, oblong_tpu, showFigs)
     % Returns: extractedData - struct containing force and displacement data at contact peaks
 
     arg_length = length(varargin);
@@ -27,16 +27,16 @@ function extractedData = partA(varargin)
         end
     end
 
-    % A.1: Display end-effector positions for cylinder and hexagon PLA (normal) only
+    % A.1: Display end-effector positions for cylinder and hexagon PLA (single) only
     for i = 1:numel(cylinders)
         data = cylinders{i};
-        if contains(lower(string(data.name)), 'normal')
+        if contains(lower(string(data.name)), 'single')
             displayEndEffectorPositions(data, data.name, showFigs);
         end
     end
     for i = 1:numel(hexagons)
         data = hexagons{i};
-        if contains(lower(string(data.name)), 'normal')
+        if contains(lower(string(data.name)), 'single')
             displayEndEffectorPositions(data, data.name, showFigs);
         end
     end
@@ -77,6 +77,10 @@ function extractedData = partA(varargin)
     end
     fprintf('Total extracted contact samples: %d (across %d objects)\n', totalSamples, numel(fields));
 
+    % Save extracted data to .mat file
+    save('extractedData.mat', 'extractedData');
+    fprintf('Extracted data saved to extractedData.mat\n');
+
     disp('Part A completed. Contact data extracted for future parts.');
 end
 
@@ -110,6 +114,7 @@ function plotExtractedForceByShape(dataList, extractedData, shapeLabel)
     zlabel('F_Z')
     title(sprintf('%s Objects - Middle Papillae (P4) Force at Contact Peaks', shapeLabel))
     legend('show', 'Location', 'bestoutside')
+    view(3)
 end
 
 function contactData = extractContactData(data, ft_peaks)
@@ -127,7 +132,9 @@ function contactData = extractContactData(data, ft_peaks)
         warning('No Fz peaks found for %s. Using all data.', data.name);
         contactData.force = data.sensor_matrices_force;
         contactData.displacement = data.sensor_matrices_displacement;
-        contactData.ft_values = data.ft_values;
+        ft_all = data.ft_values;
+        ft_all(:, 3) = -ft_all(:, 3);  % Flip Fz axis
+        contactData.ft_values = ft_all;
         contactData.peak_indices = [];
         return;
     end
@@ -135,7 +142,9 @@ function contactData = extractContactData(data, ft_peaks)
     % Extract data at each peak index (one row per contact)
     contactData.force = data.sensor_matrices_force(fz_peak_indices, :);
     contactData.displacement = data.sensor_matrices_displacement(fz_peak_indices, :);
-    contactData.ft_values = data.ft_values(fz_peak_indices, :);
+    ft = data.ft_values(fz_peak_indices, :);
+    ft(:, 3) = -ft(:, 3);  % Flip Fz axis
+    contactData.ft_values = ft;
     contactData.peak_indices = fz_peak_indices;
 
     fprintf('  %s: Extracted %d contact samples (one per peak)\n', ...
@@ -144,33 +153,40 @@ end
 
 function displayEndEffectorPositions(data, material, showFigs)
     if ~showFigs
-        return;  % Exit function early if not showing figures
+        return;
     end
     pos = data.end_effector_poses;
 
-    figure
-    Utilities.plotByMaterial(pos(:,1), pos(:,2), pos(:,3), material)
+    figure('Name', sprintf('%s - End-Effector Position', material));
+    Utilities.plotByMaterial(pos(:,1), pos(:,2), pos(:,3), material, ...
+        'DisplayName', char(material))
     grid on
     axis equal
-
     xlabel('X')
     ylabel('Y')
     zlabel('Z')
-    title('End-Effector Position Trajectory')
+    title(sprintf('%s - End-Effector Position Trajectory', material))
+    legend('show', 'Location', 'bestoutside')
+    view(3)
 
-    figure
+    figure('Name', sprintf('%s - End-Effector Orientation', material));
     subplot(3,1,1)
-    Utilities.plotByMaterial(1:length(pos(:,4)), pos(:,4), material)
+    Utilities.plotByMaterial(1:length(pos(:,4)), pos(:,4), material, ...
+        'DisplayName', char(material))
     ylabel('Roll')
+    legend('show', 'Location', 'bestoutside')
 
     subplot(3,1,2)
-    Utilities.plotByMaterial(1:length(pos(:,5)), pos(:,5), material)
+    Utilities.plotByMaterial(1:length(pos(:,5)), pos(:,5), material, ...
+        'DisplayName', char(material))
     ylabel('Pitch')
 
     subplot(3,1,3)
-    Utilities.plotByMaterial(1:length(pos(:,6)), pos(:,6), material)
+    Utilities.plotByMaterial(1:length(pos(:,6)), pos(:,6), material, ...
+        'DisplayName', char(material))
     ylabel('Yaw')
     xlabel('Time (s)')
+    sgtitle(sprintf('%s - End-Effector Orientation', material))
 end
 
 function displayForceTorque(data, peaks, material, showFigs)
@@ -179,6 +195,8 @@ function displayForceTorque(data, peaks, material, showFigs)
     end
 
     ft_data = data.ft_values;
+    % Flip Fz (column 3) to account for opposite axis convention
+    ft_data(:, 3) = -ft_data(:, 3);
 
     % Force plots in first figure
     figure;
@@ -217,6 +235,8 @@ end
 
 function peaks = obtainForceTorquePeaks(data)
     ft_data = data.ft_values;
+    % Flip Fz (column 3) to account for opposite axis convention
+    ft_data(:, 3) = -ft_data(:, 3);
     
     % Initialize cell arrays to store peaks and troughs
     peaks = cell(6, 1);

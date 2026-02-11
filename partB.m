@@ -5,6 +5,11 @@ function partB(extractedData, showFigs)
     %   showFigs - boolean to control figure display
     % Note: hexagon data is accepted but only cylinder and oblong are analyzed.
 
+    if nargin < 1
+        tmp = load('extractedData.mat');
+        f = fieldnames(tmp);
+        extractedData = tmp.(f{1});
+    end
     if nargin < 2
         showFigs = true;
     end
@@ -115,10 +120,8 @@ function runShapeAllPapillaePCA(dataList, groupLabel, showFigs)
     title(groupLabel + " | all papillae | 2D PCA projection")
     legend('show', 'Location', 'bestoutside')
 
-    % B.3.b: Scree plot only for cylinder and oblong (per spec)
-    if groupLabel == "Cylinder" || groupLabel == "Oblong"
-        plotScree(latent, groupLabel + " | all papillae");
-    end
+    % B.3.b: Scree plot for all shapes
+    plotScree(latent, groupLabel + " | all papillae");
 end
 
 function [Xz, coeff, score, latent] = computePCA(X)
@@ -213,6 +216,7 @@ function plotStandardized3D(Xz, materials, coeff, latent, groupLabel)
     xlabel('Fx (z-scored)'); ylabel('Fy (z-scored)'); zlabel('Fz (z-scored)');
     title(groupLabel + " | Standardized force & principal components")
     legend('show', 'Location', 'bestoutside')
+    view(3)
 end
 
 function plotScores2D(score, materials, groupLabel)
@@ -249,7 +253,7 @@ function plotMaterialScatter3D(x, y, z, materials)
         idx = materials == mats(i);
         if any(idx)
             Utilities.plotByMaterial(x(idx), y(idx), z(idx), mats(i), ...
-                'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 8, 'DisplayName', char(mats(i)));
+                'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(mats(i)));
             hold on
         end
     end
@@ -261,7 +265,7 @@ function plotMaterialScatter2D(x, y, materials)
         idx = materials == mats(i);
         if any(idx)
             Utilities.plotByMaterial(x(idx), y(idx), mats(i), ...
-                'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 8, 'DisplayName', char(mats(i)));
+                'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(mats(i)));
             hold on
         end
     end

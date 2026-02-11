@@ -6,6 +6,11 @@ function partF(extractedData, showFigs)
     %
     % Classifies objects into material types using displacement data
 
+    if nargin < 1
+        tmp = load('extractedData.mat');
+        f = fieldnames(tmp);
+        extractedData = tmp.(f{1});
+    end
     if nargin < 2
         showFigs = true;
     end
@@ -139,61 +144,30 @@ function gmmModel = fitGMM(X, nComponents)
 end
 
 function plotGMMContour(X, materials, gmmModel, shapeLabel)
-    % F.1.b: Plot GMM probability density contours with scatter overlay
-    % Shows separate contour regions for each Gaussian component
+    % F.1.b: Plot GMM contour plot with scatter overlay
     figure('Name', sprintf('%s - GMM Contour Plot', shapeLabel));
 
-    % Create grid for contour evaluation - use data range with small margin
-    dataRangeX = max(X(:,1)) - min(X(:,1));
-    dataRangeY = max(X(:,2)) - min(X(:,2));
-    marginX = max(0.02, dataRangeX * 0.3);  % 30% margin or minimum 0.02
-    marginY = max(0.02, dataRangeY * 0.3);
-
-    xRange = [min(X(:,1)) - marginX, max(X(:,1)) + marginX];
-    yRange = [min(X(:,2)) - marginY, max(X(:,2)) + marginY];
+    % Create grid for contour evaluation
+    margin = 0.1;
+    xRange = [min(X(:,1)) - margin, max(X(:,1)) + margin];
+    yRange = [min(X(:,2)) - margin, max(X(:,2)) + margin];
 
     [xGrid, yGrid] = meshgrid(linspace(xRange(1), xRange(2), 200), ...
                                linspace(yRange(1), yRange(2), 200));
     gridPoints = [xGrid(:), yGrid(:)];
 
-    nComponents = gmmModel.NumComponents;
-
-    % Compute PDF for each component separately (weighted by mixing proportion)
-    componentPDFs = zeros(size(gridPoints, 1), nComponents);
-    for k = 1:nComponents
-        mu_k = gmmModel.mu(k, :);
-        Sigma_k = gmmModel.Sigma(:, :, k);
-        weight_k = gmmModel.ComponentProportion(k);
-
-        % Compute multivariate normal PDF for this component
-        diff = gridPoints - mu_k;
-        mahalDist = sum((diff / Sigma_k) .* diff, 2);
-        detSigma = det(Sigma_k);
-        componentPDFs(:, k) = weight_k * (2*pi)^(-1) * detSigma^(-0.5) * exp(-0.5 * mahalDist);
-    end
-
-    % Compute total GMM PDF (sum of all components)
-    totalPDF = sum(componentPDFs, 2);
-    totalPDFGrid = reshape(totalPDF, size(xGrid));
+    % Evaluate total GMM PDF using built-in function
+    pdfValues = pdf(gmmModel, gridPoints);
+    pdfGrid = reshape(pdfValues, size(xGrid));
 
     hold on
 
-    % Draw unified contour lines for total GMM PDF
-    contour(xGrid, yGrid, totalPDFGrid, 20, 'LineWidth', 1, ...
+    % Draw contour lines of the GMM PDF
+    contour(xGrid, yGrid, pdfGrid, 20, 'LineWidth', 1, ...
         'HandleVisibility', 'off');
     colormap(parula);
     cb = colorbar;
     ylabel(cb, 'Probability Density');
-
-    % Mark component means with labels
-    for k = 1:nComponents
-        mu_k = gmmModel.mu(k, :);
-        scatter(mu_k(1), mu_k(2), 200, 'k', 'p', 'filled', ...
-            'MarkerEdgeColor', 'w', 'LineWidth', 2, 'HandleVisibility', 'off');
-        text(mu_k(1) + 0.005, mu_k(2) + 0.01, sprintf('C%d', k), ...
-            'FontSize', 12, 'FontWeight', 'bold', 'Color', 'k', ...
-            'BackgroundColor', 'w');
-    end
 
     % Overlay scatter plot with ground truth colors
     mats = unique(materials);
@@ -206,9 +180,9 @@ function plotGMMContour(X, materials, gmmModel, shapeLabel)
 
     hold off
     grid on
-    xlabel('D_X (Displacement) (m)');
-    ylabel('D_Z (Displacement) (m)');
-    title(sprintf('%s - F.b: GMM Probability Density Contours with Data Overlay', shapeLabel))
+    xlabel('D_X (Displacement)');
+    ylabel('D_Z (Displacement)');
+    title(sprintf('%s - GMM Contour Plot with Data Overlay', shapeLabel))
     legend('show', 'Location', 'bestoutside')
 end
 

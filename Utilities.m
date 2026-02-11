@@ -15,24 +15,24 @@ classdef Utilities
             end
             m = lower(string(material));
             switch m
-                case "cylinder_normal"
+                case "cylinder_single"
                     col = "blue";   
                 case "cylinder_rubber"
-                    col = "#911eb4";   % purple
+                    col = "#84f542";  
                 case "cylinder_tpu"
-                    col = "#9A6324";
-                case "hexagon_normal"
+                    col = "red";
+                case "hexagon_single"
                     col = "blue";
                 case "hexagon_rubber"
-                    col = "#911eb4";
+                    col = "#84f542";
                 case "hexagon_tpu"
-                    col = "#9A6324";
-                case "oblong_normal"
+                    col = "red";
+                case "oblong_single"
                     col = "blue";
                 case "oblong_rubber"
-                    col = "#911eb4"; 
+                    col = "#84f542"; 
                 case "oblong_tpu"
-                    col = "#9A6324";
+                    col = "red";
                 % case "default"
                 %     col = [];                   % let MATLAB choose
                 otherwise

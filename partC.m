@@ -4,6 +4,11 @@ function partC(extractedData, showFigs)
 	%   extractedData - struct from partA containing contact data for all materials
 	%   showFigs - boolean to control figure display
 
+	if nargin < 1
+		tmp = load('extractedData.mat');
+		f = fieldnames(tmp);
+		extractedData = tmp.(f{1});
+	end
 	if nargin < 2
 		showFigs = true;
 	end
@@ -33,7 +38,7 @@ function partC(extractedData, showFigs)
 		end
 	end
 
-	perplexities = [5, 300];
+	perplexities = [5, 15];
 
 	runTSNEGroup(cylinders, 'Cylinder', perplexities, showFigs);
 	% Repeat for either hexagon or oblong (choose oblong here)
@@ -48,53 +53,40 @@ function summary = runTSNEGroup(dataList, groupLabel, perplexities, showFigs)
 	end
 
 	[X, materials] = collectForceData(dataList);
-	if size(X,1) < 10
-		warning('%s: not enough samples for t-SNE.', groupLabel);
-		return;
-	end
-
 	[Xz] = standardizeFeatures(X);
-	perps = validatePerplexities(perplexities, size(Xz,1));
 
-	losses = zeros(numel(perps), 1);
-	meanDist = zeros(numel(perps), 1);
+	losses = zeros(numel(perplexities), 1);
+	meanDist = zeros(numel(perplexities), 1);
 
-	for p = 1:numel(perps)
+	for p = 1:numel(perplexities)
 		rng(0);
-		try
-			[Y, loss] = tsne(Xz, 'NumDimensions', 2, 'Perplexity', perps(p), ...
-				'NumPCAComponents', min(50, size(Xz,2)), 'Verbose', 0);
-			losses(p) = loss;
-			meanDist(p) = meanCentroidDistance(Y, materials);
-		catch ME
-			warning('t-SNE failed for perplexity %d: %s', perps(p), ME.message);
-			Y = zeros(size(Xz,1), 2);
-			losses(p) = NaN;
-			meanDist(p) = NaN;
-		end
+		[Y, loss] = tsne(Xz, 'NumDimensions', 2, 'Perplexity', perplexities(p), ...
+			'NumPCAComponents', min(50, size(Xz,2)), 'Verbose', 0);
+		losses(p) = loss;
+		meanDist(p) = meanCentroidDistance(Y, materials);
 
 		if showFigs
-			figure('Name', groupLabel + " | t-SNE (perplexity=" + perps(p) + ")");
+			figure('Name', groupLabel + " | t-SNE (perplexity=" + perplexities(p) + ")");
 			hold on
 			plotMaterialScatter2D(Y(:,1), Y(:,2), materials);
 			hold off
 			grid on; axis equal
 			xlabel('t-SNE 1'); ylabel('t-SNE 2');
-			title(groupLabel + " | t-SNE (perplexity=" + perps(p) + ")")
+			title(groupLabel + " | t-SNE (perplexity=" + perplexities(p) + ")")
 			legend('show', 'Location', 'bestoutside')
 		end
 	end
 
 	summary = struct(...
 		'groupLabel', groupLabel, ...
-		'perplexities', perps(:), ...
+		'perplexities', perplexities(:), ...
 		'losses', losses, ...
 		'meanCentroidDist2D', meanDist, ...
 		'numSamples', size(Xz,1));
 
 	fprintf('\n%s t-SNE losses:\n', groupLabel);
-	for p = 1:numel(perps)
-		fprintf('  Perplexity %d -> loss %.4f\n', perps(p), losses(p));
+	for p = 1:numel(perplexities)
+		fprintf('  Perplexity %d -> loss %.4f\n', perplexities(p), losses(p));
 	end
 end
 
@@ -126,19 +118,6 @@ function [Xz] = standardizeFeatures(X)
 	Xz = (X - mu) ./ sigma;
 end
 
-function perps = validatePerplexities(perplexities, nSamples)
-	% More conservative: tsne needs at least 3*perplexity + 1 samples
-	% Also cap at (nSamples-1)/4 to avoid convergence issues
-	maxPerp = min(floor((nSamples - 1) / 4), 50);
-	if maxPerp < 2
-		maxPerp = 2;
-	end
-	perps = unique(min(perplexities, maxPerp));
-	if isempty(perps)
-		perps = min(5, maxPerp);
-	end
-end
-
 function d = meanCentroidDistance(Y, materials)
 	mats = unique(materials);
 	centroids = zeros(numel(mats), 2);
@@ -166,7 +145,7 @@ function plotMaterialScatter2D(x, y, materials)
 		idx = materials == mats(i);
 		if any(idx)
 			Utilities.plotByMaterial(x(idx), y(idx), mats(i), ...
-				'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 8, 'DisplayName', char(mats(i)));
+				'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(mats(i)));
 			hold on
 		end
 	end

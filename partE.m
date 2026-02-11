@@ -6,6 +6,11 @@ function partE(extractedData, showFigs)
     %
     % Uses oblong objects with displacement data from central papillae (P4)
 
+    if nargin < 1
+        tmp = load('extractedData.mat');
+        f = fieldnames(tmp);
+        extractedData = tmp.(f{1});
+    end
     if nargin < 2
         showFigs = true;
     end
@@ -106,6 +111,7 @@ function plotGroundTruth(X, materials, shapeLabel)
     xlabel('D_X'); ylabel('D_Y'); zlabel('D_Z');
     title(sprintf('%s - Ground Truth Labels (Displacement)', shapeLabel))
     legend('show', 'Location', 'bestoutside')
+    view(3)
 end
 
 function [clusterIdx, centroids] = applyKMeans(X, k, distanceMetric)
@@ -155,6 +161,7 @@ function plotClusteringResult(X, materials, clusterIdx, centroids, methodName, s
     xlabel('D_X'); ylabel('D_Y'); zlabel('D_Z');
     title(sprintf('%s - %s Clustering', shapeLabel, methodName))
     legend('show', 'Location', 'bestoutside')
+    view(3)
 
     % Also create a 2D view for clarity
     figure('Name', sprintf('%s - %s (2D)', shapeLabel, methodName));

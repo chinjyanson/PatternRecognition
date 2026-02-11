@@ -4,6 +4,11 @@ function partD(extractedData, showFigs)
     %   extractedData - struct from partA containing contact data for all materials
     %   showFigs - boolean to control figure display
 
+    if nargin < 1
+        tmp = load('extractedData.mat');
+        f = fieldnames(tmp);
+        extractedData = tmp.(f{1});
+    end
     if nargin < 2
         showFigs = true;
     end
@@ -75,14 +80,15 @@ function visualize3DDisplacement(X1, X2, name1, name2)
     figure('Name', 'Tactile Displacement 3D Scatter');
     hold on
     Utilities.plotByMaterial(X1(:,1), X1(:,2), X1(:,3), name1, ...
-        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name1));
+        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name1));
     Utilities.plotByMaterial(X2(:,1), X2(:,2), X2(:,3), name2, ...
-        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name2));
+        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name2));
     hold off
     grid on; axis equal
     xlabel('D_X'); ylabel('D_Y'); zlabel('D_Z');
     title('Central Papillae Tactile Displacement (3D)')
     legend('show', 'Location', 'bestoutside')
+    view(3)
     
     fprintf('\nObservation (3D displacement):\n');
     fprintf('%s: mean [%.4f, %.4f, %.4f], std [%.4f, %.4f, %.4f]\n', ...
@@ -126,9 +132,9 @@ function applyLDA2DCombinations(X1, X2, name1, name2)
         
         % Plot data points
         Utilities.plotByMaterial(X1c(:,1), X1c(:,2), name1, ...
-            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name1));
+            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name1));
         Utilities.plotByMaterial(X2c(:,1), X2c(:,2), name2, ...
-            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name2));
+            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name2));
         
         % Plot decision boundary
         plotDecisionBoundary2D(w, threshold);
@@ -214,9 +220,9 @@ function applyLDA3D(X1, X2, name1, name2, showFigs)
         figure('Name', 'LDA 3D reduced to 2D');
         hold on
         Utilities.plotByMaterial(Y1(:,1), Y1(:,2), name1, ...
-            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name1));
+            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name1));
         Utilities.plotByMaterial(Y2(:,1), Y2(:,2), name2, ...
-            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name2));
+            'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name2));
         
         % Decision line (perpendicular to LD1 axis)
         ylims = ylim;
@@ -263,9 +269,9 @@ function plot3DWithDiscriminationPlane(X1, X2, name1, name2, w, threshold)
     hold on
     
     Utilities.plotByMaterial(X1(:,1), X1(:,2), X1(:,3), name1, ...
-        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name1));
+        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name1));
     Utilities.plotByMaterial(X2(:,1), X2(:,2), X2(:,3), name2, ...
-        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 6, 'DisplayName', char(name2));
+        'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name2));
     
     % Plot discrimination plane: w' * x = threshold
     plotDiscriminationPlane(w, threshold, X1, X2);

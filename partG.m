@@ -7,6 +7,11 @@ function partG(extractedData, showFigs)
     % Applies bagging to displacement data from all nine papillae,
     % previously processed with PCA
 
+    if nargin < 1
+        tmp = load('extractedData.mat');
+        f = fieldnames(tmp);
+        extractedData = tmp.(f{1});
+    end
     if nargin < 2
         showFigs = true;
     end
@@ -55,6 +60,7 @@ function partG(extractedData, showFigs)
     fprintf('\nTraining bagged decision tree ensemble...\n');
     baggedModel = TreeBagger(nTrees, X_train, y_train, ...
         'Method', 'classification', ...
+        'MaxNumSplits', 10, ...
         'OOBPrediction', 'on', ...
         'OOBPredictorImportance', 'on');
 
@@ -87,8 +93,7 @@ function partG(extractedData, showFigs)
         classIdx = y_test_cat == classes{i};
         classAcc = sum(y_pred_cat(classIdx) == y_test_cat(classIdx)) / sum(classIdx);
         % Convert to readable name
-        name = strrep(classes{i}, 'normal', 'single');
-        name = strrep(name, '_', ' ');
+        name = strrep(classes{i}, '_', ' ');
         words = strsplit(name, ' ');
         for w = 1:length(words)
             if ~isempty(words{w})
@@ -155,11 +160,11 @@ end
 
 function visualizeDecisionTrees(baggedModel)
     % G.1.b: Visualize two decision trees from the ensemble
-    figure('Name', 'Decision Tree 1');
+    figure('Name', 'Decision Tree 1', 'Position', [50, 50, 1600, 800]);
     view(baggedModel.Trees{1}, 'Mode', 'graph');
     title('Decision Tree 1 from Bagged Ensemble')
 
-    figure('Name', 'Decision Tree 2');
+    figure('Name', 'Decision Tree 2', 'Position', [100, 100, 1600, 800]);
     view(baggedModel.Trees{2}, 'Mode', 'graph');
     title('Decision Tree 2 from Bagged Ensemble')
 end
@@ -171,12 +176,10 @@ function plotConfusionMatrix(y_true, y_pred, classes)
     % Compute confusion matrix
     C = confusionmat(y_true, y_pred);
 
-    % Create display-friendly class names (e.g., "cylinder_normal" -> "Cylinder Single")
+    % Create display-friendly class names (e.g., "cylinder_single" -> "Cylinder Single")
     displayNames = cell(size(classes));
     for i = 1:length(classes)
         name = classes{i};
-        % Replace "normal" with "single" to match dataset naming
-        name = strrep(name, 'normal', 'single');
         % Replace underscores with spaces and capitalize each word
         name = strrep(name, '_', ' ');
         words = strsplit(name, ' ');
