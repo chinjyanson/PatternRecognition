@@ -112,7 +112,7 @@ function plotExtractedForceByShape(dataList, extractedData, shapeLabel)
     xlabel('F_X')
     ylabel('F_Y')
     zlabel('F_Z')
-    title(sprintf('%s Objects - Middle Papillae (P4) Force at Contact Peaks', shapeLabel))
+    title(sprintf('%s - P4 Force at Contact Peaks', shapeLabel))
     legend('show', 'Location', 'bestoutside')
     view(3)
 end

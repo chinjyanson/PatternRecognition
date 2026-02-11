@@ -89,6 +89,8 @@ function runAllPapillaePCA(dataArgs, showFigs)
 
     shapes = ["cylinder", "hexagon", "oblong"];
     labels = ["Cylinder", "Hexagon", "Oblong"];
+    allLatent = {};
+    allLabels = {};
     for s = 1:numel(shapes)
         list = {};
         for i = 1:numel(dataArgs)
@@ -98,12 +100,19 @@ function runAllPapillaePCA(dataArgs, showFigs)
             end
         end
         if ~isempty(list)
-            runShapeAllPapillaePCA(list, labels(s), showFigs);
+            latent = runShapeAllPapillaePCA(list, labels(s), showFigs);
+            allLatent{end+1} = latent; %#ok<AGROW>
+            allLabels{end+1} = labels(s); %#ok<AGROW>
         end
+    end
+
+    % Combined scree plot for all shapes
+    if showFigs && ~isempty(allLatent)
+        plotCombinedScree(allLatent, allLabels);
     end
 end
 
-function runShapeAllPapillaePCA(dataList, groupLabel, showFigs)
+function latent = runShapeAllPapillaePCA(dataList, groupLabel, showFigs)
     [X, materials] = collectAllPapillaeForceData(dataList);
     [~, ~, score, latent] = computePCA(X);
 
@@ -119,9 +128,6 @@ function runShapeAllPapillaePCA(dataList, groupLabel, showFigs)
     xlabel('PC1 score'); ylabel('PC2 score');
     title(groupLabel + " | all papillae | 2D PCA projection")
     legend('show', 'Location', 'bestoutside')
-
-    % B.3.b: Scree plot for all shapes
-    plotScree(latent, groupLabel + " | all papillae");
 end
 
 function [Xz, coeff, score, latent] = computePCA(X)
@@ -189,14 +195,22 @@ function [X, materials] = collectAllPapillaeForceData(dataList)
     end
 end
 
-function plotScree(latent, titleLabel)
-    figure('Name', titleLabel + " | Scree");
-    explained = latent ./ max(sum(latent), eps);
-    plot(1:numel(explained), 100 * explained, '-o', 'LineWidth', 1.5);
+function plotCombinedScree(allLatent, allLabels)
+    colors = {'b', 'r', [0.2 0.7 0.2]};
+    figure('Name', 'Combined Scree Plot');
+    hold on
+    for s = 1:numel(allLatent)
+        explained = allLatent{s} ./ max(sum(allLatent{s}), eps);
+        plot(1:numel(explained), 100 * explained, '-o', ...
+            'LineWidth', 1.5, 'Color', colors{s}, ...
+            'DisplayName', char(allLabels{s}));
+    end
+    hold off
     grid on
     xlabel('Principal component');
     ylabel('Variance explained (%)');
-    title(titleLabel + " | scree plot")
+    title('Scree Plot - All Shapes (All Papillae)')
+    legend('show', 'Location', 'best')
 end
 
 function plotStandardized3D(Xz, materials, coeff, latent, groupLabel)
