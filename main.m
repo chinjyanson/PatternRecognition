@@ -45,7 +45,7 @@ partD(extractedData, showFigs)
 partE(extractedData, showFigs)
 
 % Part F - GMM on extracted displacement data
-partF(extractedData, showFigs)s
+partF(extractedData, showFigs)
 
 % Part G - Bagging on extracted displacement data
-%partG(extractedData, showFigs)
+partG(extractedData, showFigs)

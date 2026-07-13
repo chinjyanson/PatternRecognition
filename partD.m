@@ -267,17 +267,30 @@ end
 function plot3DWithDiscriminationPlane(X1, X2, name1, name2, w, threshold)
     figure('Name', 'LDA 3D with discrimination plane');
     hold on
-    
+
     Utilities.plotByMaterial(X1(:,1), X1(:,2), X1(:,3), name1, ...
         'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name1));
     Utilities.plotByMaterial(X2(:,1), X2(:,2), X2(:,3), name2, ...
         'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 15, 'DisplayName', char(name2));
-    
+
     % Plot discrimination plane: w' * x = threshold
     plotDiscriminationPlane(w, threshold, X1, X2);
-    
+
+    % Fit axes to data range with padding
+    X_all = [X1; X2];
+    margin = 0.55;
+    for ax = 1:3
+        rng_ax = max(X_all(:,ax)) - min(X_all(:,ax));
+        pad = margin * rng_ax;
+        switch ax
+            case 1, xlim([min(X_all(:,1))-pad, max(X_all(:,1))+pad]);
+            case 2, ylim([min(X_all(:,2))-pad, max(X_all(:,2))+pad]);
+            case 3, zlim([min(X_all(:,3))-pad, max(X_all(:,3))+pad]);
+        end
+    end
+
     hold off
-    grid on; axis equal
+    grid on
     xlabel('D_X'); ylabel('D_Y'); zlabel('D_Z');
     title('LDA: 3D with discrimination plane')
     legend('show', 'Location', 'bestoutside')
@@ -286,15 +299,21 @@ end
 
 function plotDiscriminationPlane(w, threshold, X1, X2)
     % Create plane: w(1)*x + w(2)*y + w(3)*z = threshold
+    % Clip plane to data bounds so it doesn't extend beyond the box
     X_all = [X1; X2];
     x_range = [min(X_all(:,1)), max(X_all(:,1))];
     y_range = [min(X_all(:,2)), max(X_all(:,2))];
-    
+    z_range = [min(X_all(:,3)), max(X_all(:,3))];
+
     [X_grid, Y_grid] = meshgrid(linspace(x_range(1), x_range(2), 20), ...
                                  linspace(y_range(1), y_range(2), 20));
-    
+
     if abs(w(3)) > 1e-6
         Z_grid = (threshold - w(1) * X_grid - w(2) * Y_grid) / w(3);
+        % Clip plane to data z-range with padding
+        z_pad = 0.5 * (z_range(2) - z_range(1));
+        Z_grid(Z_grid < z_range(1) - z_pad) = NaN;
+        Z_grid(Z_grid > z_range(2) + z_pad) = NaN;
         surf(X_grid, Y_grid, Z_grid, 'FaceAlpha', 0.3, 'EdgeColor', 'none', ...
             'FaceColor', 'k', 'DisplayName', 'Discrimination plane');
     else
